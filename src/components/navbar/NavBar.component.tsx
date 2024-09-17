@@ -1,4 +1,4 @@
-import React, { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import './NavBar.component.scss';
 import logo from '../../assets/genesys-logo.png'
 

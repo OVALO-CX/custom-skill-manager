@@ -12,6 +12,8 @@ interface IQueue {
  * In constrast, Org presences are not hardcoded.
 */
 const client = platformClient.ApiClient.instance;
+client.setEnvironment('https://api.mypurecloud.de');
+client.setPersistSettings(true, 'custom_api');
 const { clientId, redirectUri } = clientConfig;
 
 const searchApi = new platformClient.SearchApi();

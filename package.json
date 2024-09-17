@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 3000",
     "build": "tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
@@ -14,6 +14,7 @@
     "debounce": "^2.0.0",
     "purecloud-platform-client-v2": "^188.0.1",
     "react": "^18.2.0",
+    "react-app-with-genesys-cloud-sdk": "file:",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.1"
   },
