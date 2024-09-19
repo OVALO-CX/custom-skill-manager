@@ -10,6 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@mui/icons-material": "^6.1.0",
+    "@mui/joy": "^5.0.0-beta.48",
+    "@mui/material": "^6.1.0",
     "bootstrap": "^5.3.3",
     "debounce": "^2.0.0",
     "purecloud-platform-client-v2": "^188.0.1",

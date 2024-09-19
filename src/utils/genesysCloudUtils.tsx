@@ -1,11 +1,5 @@
 import { clientConfig } from '../clientConfig';
-import platformClient from 'purecloud-platform-client-v2';
-
-interface IQueue {
-    id: string,
-    activeUsers: number,
-    onQueueUsers: number
-}
+import platformClient, { Models } from 'purecloud-platform-client-v2';
 
 /* 
  * This presence ID is hardcoded because System presence IDs are hardcoded into Genesys Cloud, can never change, and are not unique to orgs or regions
@@ -18,13 +12,26 @@ const { clientId, redirectUri } = clientConfig;
 
 const searchApi = new platformClient.SearchApi();
 const usersApi = new platformClient.UsersApi();
-const analyticsApi = new platformClient.AnalyticsApi();
 const tokensApi = new platformClient.TokensApi();
 const routingApi = new platformClient.RoutingApi();
 const presenceApi = new platformClient.PresenceApi();
 
 
 const cache: any = {};
+
+const getAllPages = async (request: Function) => {
+    let listElements = []
+    let pageNumber = 1
+    let result: any = {}
+    do {
+        result = await request({ 
+            'pageNumber': pageNumber++, // Number | Page number
+            'pageSize': 25})
+            console.log(result)
+            result.entities?.length > 0 && listElements.push(...result.entities)
+    } while(result.entities?.length > 0)
+    return listElements
+}
 
 export function authenticate() {
     return client.loginImplicitGrant(clientId, redirectUri, { state: 'state' })
@@ -49,15 +56,79 @@ export function getUserByEmail(email: string) {
     return searchApi.postUsersSearch(body);
 }
 
-export async function getQueues(userId: string, skipCache: boolean = false) {
+
+
+export async function getAllUsers(skipCache: boolean = true) {
+
+    if (skipCache) {
+        return await getAllPages((e: any) => usersApi.getUsers(e));
+    } else if (cache['userQueues']){
+        return cache['userQueues'];
+    } else {
+        try {
+            cache['userQueues'] = await getAllPages((e: any) => usersApi.getUsers(e));
+            return cache['userQueues'];
+        } catch (err) {
+            console.error(err)
+        }
+    }
+}
+
+export async function getUserSkills(userId: string) {
+    const result = await usersApi.getUserRoutingskills(userId)
+    console.log(result)
+
+    return result.entities || []
+}
+
+export async function getUserQueues(userId: string, skipCache: boolean = true) {
     if (skipCache) {
         return usersApi.getUserQueues(userId);
+    } else if (cache['userQueues']){
+        return cache['userQueues'];
+    } else {
+        try {
+            cache['userQueues'] = await usersApi.getUserQueues(userId);
+            return cache['userQueues'];
+        } catch (err) {
+            console.error(err)
+        }
+    }
+}
+
+export async function updateUserRoutingSkills(userId: string, skills: Models.UserRoutingSkillPost[]) {
+    return usersApi.putUserRoutingskillsBulk(userId, skills);
+}
+
+export async function getAllQueues(skipCache: boolean = true) {
+    if (skipCache) {
+        return await getAllPages((e: any) =>  routingApi.getRoutingQueues(e))
     } else if (cache['queues']){
         return cache['queues'];
     } else {
         try {
-            cache['queues'] = await usersApi.getUserQueues(userId);
+            cache['queues'] = await getAllPages((e: any) =>  routingApi.getRoutingQueues(e))
             return cache['queues'];
+        } catch (err) {
+            console.error(err)
+        }
+    }
+}
+
+export async function getQueueMembers(queueId: string)  {
+    const result = await routingApi.getRoutingQueueMembers(queueId, {expand: ['skills']})
+    return result.entities || []
+}
+
+export async function getAllSkills(skipCache: boolean = true) {
+    if (skipCache) {
+        return (await routingApi.getRoutingSkills()).entities
+    } else if (cache['skills']){
+        return cache['skills'];
+    } else {
+        try {
+            cache['skills'] = (await routingApi.getRoutingSkills()).entities
+            return cache['skills'];
         } catch (err) {
             console.error(err)
         }
@@ -87,25 +158,6 @@ export async function logoutUsersFromQueue(queueId: string) {
         })
 }
 
-export function getQueueObservations(queues: IQueue[]) {
-    const predicates = queues.map((queue: IQueue) => {
-        return {
-            type: 'dimension',
-            dimension: 'queueId',
-            operator: 'matches',
-            value: queue.id
-        }
-    })
-    const body = {
-        filter: {
-           type: 'or',
-           predicates
-        },
-        metrics: [ 'oOnQueueUsers', 'oActiveUsers' ],
-    }
-    return analyticsApi.postAnalyticsQueuesObservationsQuery(body);
-}
-
 export async function getUserMe(skipCache: boolean = false) {
     if (skipCache) {
         return usersApi.getUsersMe({ 
@@ -124,36 +176,3 @@ export async function getUserMe(skipCache: boolean = false) {
         }
     }
 }
-
-export function getUserDetails(id: string, skipCache: boolean = false) {
-    if (skipCache) {
-        let tempDetails: any = {};
-        return usersApi.getUser(id)
-            .then((userDetailsData: any) => {
-                tempDetails = userDetailsData;
-                return presenceApi.getUserPresence(id, 'purecloud')
-            })
-            .then((userPresenceData: any) => {
-                tempDetails['presence'] = userPresenceData;
-                return tempDetails;
-            })
-            .catch((err: any) => {
-                console.error(err);
-            });
-    } else if (cache['userDetails']){
-        return cache['userDetails'];
-    } else {
-        return usersApi.getUser(id)
-            .then((userDetailsData: any) => {
-                cache['userDetails'] = userDetailsData || {};
-                return presenceApi.getUserPresence(id, 'purecloud')
-            })
-            .then((userPresenceData: any) => {
-                cache['userDetails']['presence'] = userPresenceData;
-                return cache['userDetails']
-            })
-            .catch((err: any) => {
-                console.error(err);
-            });
-    }
-  }
