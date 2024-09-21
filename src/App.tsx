@@ -13,8 +13,7 @@ function App() {
 
   async function getPlatformClientData() {
     await authenticate()
-      .then((data: any) => {
-        console.log('AUTH', data)
+      .then(() => {
         setInitialized(true)
       })
       .catch((err: any) => {

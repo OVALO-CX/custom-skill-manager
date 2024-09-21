@@ -27,7 +27,6 @@ const getAllPages = async (request: Function) => {
         result = await request({ 
             'pageNumber': pageNumber++, // Number | Page number
             'pageSize': 25})
-            console.log(result)
             result.entities?.length > 0 && listElements.push(...result.entities)
     } while(result.entities?.length > 0)
     return listElements
@@ -76,8 +75,6 @@ export async function getAllUsers(skipCache: boolean = true) {
 
 export async function getUserSkills(userId: string) {
     const result = await usersApi.getUserRoutingskills(userId)
-    console.log(result)
-
     return result.entities || []
 }
 

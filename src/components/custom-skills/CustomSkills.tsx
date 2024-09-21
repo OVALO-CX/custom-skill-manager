@@ -24,6 +24,7 @@ function CustomSkills() {
     if(!users || users.length == 0) {
       setUsersSelected([])
       setElementsSelected([...queueUsers])
+      return
     }
     setUsersSelected(users)
     if(users.length > usersSelected.length) {
@@ -94,7 +95,7 @@ function CustomSkills() {
     /></Box><Divider sx={{mt: 2,mb: -2, mx: -2}}/></Sheet>
       
       <Box sx={{ display: 'flex', gap: 1, p:1, flexDirection: 'column' }}>
-        {elementsSelected.map((member: any) => <Card key={member.id}  sx={{p:1}}><Box sx={{ display: 'flex', gap: 2,  }} justifyContent="space-between" alignItems='center'>
+        {elementsSelected.sort((a: any,b: any) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)).map((member: any) => <Card key={member.id}  sx={{p:1}}><Box sx={{ display: 'flex', gap: 2,  }} justifyContent="space-between" alignItems='center'>
           <Typography level='title-sm'>{member.name}</Typography>
           <Autocomplete
             placeholder="Ajouter une compétence"
@@ -105,7 +106,7 @@ function CustomSkills() {
             isOptionEqualToValue={(option: any, value: any) => option.id == value.id}
             onChange={(_, selected: any) => {
               const element = selected &&  selected[0]
-              selected && setElementsSelected([...elementsSelected.filter((skll: any) => skll.id != element.id).map((mbr: any) => {
+              selected && setElementsSelected([...elementsSelected.filter((mmbr: any) => mmbr.id != element.id).map((mbr: any) => {
               if(mbr.skills && mbr.id == member.id) {
                 updateGroupMember(member.id, [...mbr.skills, {...element, proficiency: 0}])
                 return {...mbr, skills: [...mbr.skills, element]}
