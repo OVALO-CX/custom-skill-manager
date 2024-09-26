@@ -15,9 +15,8 @@ const usersApi = new platformClient.UsersApi();
 const tokensApi = new platformClient.TokensApi();
 const routingApi = new platformClient.RoutingApi();
 const presenceApi = new platformClient.PresenceApi();
+const locationApi = new platformClient.LocationsApi();
 
-
-const cache: any = {};
 
 const getAllPages = async (request: Function) => {
     let listElements = []
@@ -26,9 +25,10 @@ const getAllPages = async (request: Function) => {
     do {
         result = await request({ 
             'pageNumber': pageNumber++, // Number | Page number
-            'pageSize': 25})
-            result.entities?.length > 0 && listElements.push(...result.entities)
-    } while(result.entities?.length > 0)
+            'pageSize': 25, expand: ['locations', 'skills']})
+            result.entities?.length > 0 && 
+            listElements.push(...result.entities)
+    } while(result.pageNumber < result.pageCount)
     return listElements
 }
 
@@ -55,22 +55,12 @@ export function getUserByEmail(email: string) {
     return searchApi.postUsersSearch(body);
 }
 
+export async function getAllLocations() {
+    return await getAllPages((e: any) =>  locationApi.getLocations(e))
+}
 
-
-export async function getAllUsers(skipCache: boolean = true) {
-
-    if (skipCache) {
-        return await getAllPages((e: any) => usersApi.getUsers(e));
-    } else if (cache['userQueues']){
-        return cache['userQueues'];
-    } else {
-        try {
-            cache['userQueues'] = await getAllPages((e: any) => usersApi.getUsers(e));
-            return cache['userQueues'];
-        } catch (err) {
-            console.error(err)
-        }
-    }
+export async function getAllUsers() {
+    return await getAllPages((e: any) => usersApi.getUsers(e));
 }
 
 export async function getUserSkills(userId: string) {
@@ -78,58 +68,25 @@ export async function getUserSkills(userId: string) {
     return result.entities || []
 }
 
-export async function getUserQueues(userId: string, skipCache: boolean = true) {
-    if (skipCache) {
-        return usersApi.getUserQueues(userId);
-    } else if (cache['userQueues']){
-        return cache['userQueues'];
-    } else {
-        try {
-            cache['userQueues'] = await usersApi.getUserQueues(userId);
-            return cache['userQueues'];
-        } catch (err) {
-            console.error(err)
-        }
-    }
+export async function getUserQueues(userId: string) {
+    return usersApi.getUserQueues(userId);
 }
 
 export async function updateUserRoutingSkills(userId: string, skills: Models.UserRoutingSkillPost[]) {
     return usersApi.putUserRoutingskillsBulk(userId, skills);
 }
 
-export async function getAllQueues(skipCache: boolean = true) {
-    if (skipCache) {
-        return await getAllPages((e: any) =>  routingApi.getRoutingQueues(e))
-    } else if (cache['queues']){
-        return cache['queues'];
-    } else {
-        try {
-            cache['queues'] = await getAllPages((e: any) =>  routingApi.getRoutingQueues(e))
-            return cache['queues'];
-        } catch (err) {
-            console.error(err)
-        }
-    }
+export async function getAllQueues() {
+    return await getAllPages((e: any) =>  routingApi.getRoutingQueues(e))
 }
 
 export async function getQueueMembers(queueId: string)  {
-    const result = await routingApi.getRoutingQueueMembers(queueId, {expand: ['skills']})
+    const result = await routingApi.getRoutingQueueMembers(queueId)
     return result.entities || []
 }
 
-export async function getAllSkills(skipCache: boolean = true) {
-    if (skipCache) {
-        return (await routingApi.getRoutingSkills()).entities
-    } else if (cache['skills']){
-        return cache['skills'];
-    } else {
-        try {
-            cache['skills'] = (await routingApi.getRoutingSkills()).entities
-            return cache['skills'];
-        } catch (err) {
-            console.error(err)
-        }
-    }
+export async function getAllSkills() {
+    return await getAllPages((e: any) =>  routingApi.getRoutingSkills(e))
 }
 
 export function getUserRoutingStatus(userId: string) {
@@ -155,21 +112,9 @@ export async function logoutUsersFromQueue(queueId: string) {
         })
 }
 
-export async function getUserMe(skipCache: boolean = false) {
-    if (skipCache) {
-        return usersApi.getUsersMe({ 
-            expand: ['routingStatus', 'presence'],
-        });
-    } else if (cache['userMe']){
-        return cache['userMe'];
-    } else {
-        try {
-            cache['userMe'] = await usersApi.getUsersMe({ 
-                expand: ['routingStatus', 'presence'],
-            });
-            return cache['userMe'];
-        } catch (err) {
-            console.error(err)
-        }
-    }
+export async function getUserMe() {
+    return usersApi.getUsersMe({ 
+        expand: ['routingStatus', 'presence', 'locations'],
+    });
+
 }

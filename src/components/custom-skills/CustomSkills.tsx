@@ -2,50 +2,68 @@ import React from 'react';
 import { Autocomplete, Box, Card, Divider, IconButton, Sheet, Typography } from '@mui/joy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Rating } from '@mui/material';
-import { getAllQueues, getAllSkills, getAllUsers, getQueueMembers, getUserSkills, updateUserRoutingSkills } from '../../utils/genesysCloudUtils';
+import { getAllLocations, getAllQueues, getAllSkills, getAllUsers, getQueueMembers, getUserSkills, updateUserRoutingSkills } from '../../utils/genesysCloudUtils';
 import { Models } from 'purecloud-platform-client-v2';
+import RefreshIcon from '@mui/icons-material/Refresh';
 
 
-function CustomSkills() {
-  const [queues, setQueues] = React.useState([])
-  const [skills, setSkills] = React.useState([])
+function CustomSkills({authenticatedUser} : {authenticatedUser: Models.User}) {
+  const [filtered, setFiltered] = React.useState<boolean>(false)
+  const [queues, setQueues] = React.useState<Models.Queue[]>([])
+  const [skills, setSkills] = React.useState<Models.RoutingSkill[]>([])
+  const [locations, setLocations] = React.useState<Models.LocationDefinition[]>([])
   const [users, setUsers] = React.useState<Models.User[]>([])
-  const [usersSelected, setUsersSelected] = React.useState<Models.User[]>([])
-  const [queueUsers, setQueueUsers] = React.useState<Models.User[]>([])
-  const [elementsSelected, setElementsSelected] = React.useState<Models.User[]>([])
+  const [usersSelected, setUsersSelected] = React.useState<string[]>([])
+  const [queueUsers, setQueueUsers] = React.useState<string[]>([])
+  const [elementsSelected, setElementsSelected] = React.useState<string[]>([])
+  const [loading, setLoading] = React.useState<boolean>(false)
 
   React.useEffect(() => {
-    getAllQueues().then(queues => setQueues(queues))
-    getAllSkills().then(skills => setSkills(skills))
-    getAllUsers().then(users => setUsers(users))
+    getAllLocations().then(lctns => setLocations(lctns))
   }, [])
 
-  const getUsers = (users : Models.User[]) => {
-    if(!users || users.length == 0) {
+
+  const loadElements = () => {
+    setLoading(true)
+    getAllQueues().then(qs => setQueues(qs))
+      getAllSkills().then(sklls => setSkills(sklls))
+      getAllUsers().then(usrs => {
+        if(authenticatedUser.locations && authenticatedUser.locations?.length > 0) {
+          const authUserLocationId =  authenticatedUser.locations[0].locationDefinition?.id
+          const authUserCountry = locations.find(lct => lct.id == authUserLocationId)?.address?.country
+          setUsers([...usrs.filter(usr => locations.find(loc => usr.locations && usr.locations.length > 0 
+            &&  loc.id == usr.locations[0].locationDefinition?.id)?.address?.country == authUserCountry)])
+        }
+        setFiltered(true)
+        setLoading(false)
+      })
+  }
+
+  React.useEffect(() => {
+    if(locations && locations.length > 0 && authenticatedUser.locations && authenticatedUser.locations?.length > 0) {
+      loadElements()
+    }
+  }, [locations])
+
+  const getUsers = (usrs : Models.User[]) => {
+    if(!usrs || usrs.length == 0) {
       setUsersSelected([])
       setElementsSelected([...queueUsers])
       return
     }
-    setUsersSelected(users)
-    if(users.length > usersSelected.length) {
-      const newUser = users.find((user: any) => !usersSelected.find((usr: any) => usr.id == user.id))
-      if(!newUser || elementsSelected.find(element => element.id == newUser.id)) {
+    setUsersSelected(usrs.map(usr => usr.id || ''))
+    if(usrs.length > usersSelected.length) {
+      const newUser = usrs.find((user: any) => !usersSelected.find((usrId=> usrId == user.id)))
+      if(!newUser || elementsSelected.find(elementId => elementId == newUser.id)) {
         return
       }
-      getUserSkills(newUser.id || '').then((userSkills) => {
-        setElementsSelected([...elementsSelected,{
-          id: newUser.id,
-          name: newUser.name,
-          skills: userSkills,
-          version: 1
-        }])
-      })
-    } else if(users.length < usersSelected.length) {
-      const oldUser = usersSelected.find(user => !users.find((usr: any) => usr.id == user.id))
-      if(!oldUser || queueUsers.find(usr => usr.id == oldUser.id)) {
+      setElementsSelected([...elementsSelected, newUser.id || ''])
+    } else if(usrs.length < usersSelected.length) {
+      const oldUserId = usersSelected.find(userId => !usrs.find((usr: any) => usr.id == userId))
+      if(!oldUserId || queueUsers.find(usrId => usrId == oldUserId)) {
         return
       }
-      setElementsSelected([...elementsSelected.filter(member => member.id != oldUser.id)])
+      setElementsSelected([...elementsSelected.filter(memberId => memberId != oldUserId)])
     }
 
   }
@@ -57,99 +75,103 @@ function CustomSkills() {
       return
     }
     getQueueMembers(queue.id || '').then(mmbrs => {
-      const usrs: any = mmbrs.map(mmbr => mmbr.user).filter(usr => usr != undefined)
+      const usrs: string[] = mmbrs.filter(mmbr => users.find(usr => mmbr.id == usr.id)).map(mmbr => mmbr.id || '')
       setQueueUsers(usrs)
-      setElementsSelected([...elementsSelected.filter(element => !queueUsers.find(queueUsr => queueUsr.id == element.id)), ...usrs.filter((mmbr:any) => !elementsSelected.find(element => element?.id == mmbr.id))])
+      setElementsSelected([...elementsSelected.filter(elementId => !queueUsers.find(queueUsrId => queueUsrId == elementId)), ...usersSelected, ...usrs])
     })
   }
 
-  const updateGroupMember = (userId : string, skills: any) => {
+  const updateUser = (userId : string, skills: any) => {
     updateUserRoutingSkills(userId, skills)
   }
 
-  return (
-      <Sheet sx={{
-          backgroundColor: 'white'
-        }}><Sheet  sx={{
-          p: 2,
-        }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-        <Autocomplete
-        placeholder="Users"
-        multiple
-        value={usersSelected}
-        size='sm'
-        getOptionLabel={(option) => option.name || ''}
-        isOptionEqualToValue={(option: any, value: any) => option.id == value.id}
-        onChange={(_, selected: any) => getUsers(selected)}
-        options={users}
-        sx={{ width: 300 }}
-      /><Autocomplete
-      placeholder="Queues"
+  return (<>{filtered && <Sheet sx={{
+    backgroundColor: 'white'
+  }}><Sheet  sx={{
+    p: 2,
+  }}>
+  <Box sx={{ display: 'flex', gap: 2 }}>
+  <Autocomplete
+  placeholder="Users"
+  multiple
+  value={users.filter(usr => usersSelected.find(userId => userId == usr.id))}
+  size='sm'
+  getOptionLabel={(option) => option.name || ''}
+  isOptionEqualToValue={(option: any, value: any) => option.id == value.id}
+  onChange={(_, selected: any) => getUsers(selected)}
+  options={users.sort((a: any,b: any) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : ((b.name.toLowerCase() > a.name.toLowerCase()) ? -1 : 0))}
+  sx={{ width: 300 }}
+/><Autocomplete
+placeholder="Queues"
+size='sm'
+getOptionLabel={(option) => option.name || ''}
+isOptionEqualToValue={(option: any, value: any) => option.id == value.id}
+onChange={(_, selected: any) => getQueueUsers(selected)}
+options={queues.sort((a: any,b: any) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : ((b.name.toLowerCase() > a.name.toLowerCase()) ? -1 : 0))}
+sx={{ width: 300, height: 20 }}
+/><IconButton onClick={() => loadElements()} sx={{ height: 20 }}
+  loading={loading}
+><RefreshIcon />
+</IconButton>
+</Box><Divider sx={{mt: 2,mb: -2, mx: -2}}/></Sheet>
+
+<Box sx={{ display: 'flex', gap: 1, p:1, flexDirection: 'column' }}>
+  {users.filter(usr => elementsSelected.find(elementId => elementId == usr.id)).sort((a: any,b: any) => (a.name.toLowerCase() > b.name.toLowerCase()) ? 1 : ((b.name.toLowerCase() > a.name.toLowerCase()) ? -1 : 0)).map((member: any) => <Card key={member.id}  sx={{p:1}}><Box sx={{ display: 'flex', gap: 2,  }} justifyContent="space-between" alignItems='center'>
+    <Typography level='title-sm'>{member.name}</Typography>
+    <Autocomplete
+      placeholder="Add a skill"
       size='sm'
-      getOptionLabel={(option) => option.name}
+      value={[]}
+      multiple
+      getOptionLabel={(option: any) => option?.name}
       isOptionEqualToValue={(option: any, value: any) => option.id == value.id}
-      onChange={(_, selected: any) => getQueueUsers(selected)}
-      options={queues}
-      sx={{ width: 300, height: 20 }}
-    /></Box><Divider sx={{mt: 2,mb: -2, mx: -2}}/></Sheet>
+      onChange={(_, selected: any) => {
+        const element = selected &&  selected[0]
+        selected && setUsers([...users.map((mbr: any) => {
+        if(mbr.skills && mbr.id == member.id) {
+          updateUser(member.id, [...mbr.skills, {...element, proficiency: 0}])
+          return {...mbr, skills: [...mbr.skills, element]}
+        }
+        return mbr
+      })])}}
+      options={skills.filter((skill: any) => member.skills && !member.skills.find((skll: any) => skll.id == skill.id))}
+      sx={{ width: 300 }}
+    />
+ </Box>
+ <Divider/>
+ {member.skills && member.skills.sort((a: any,b: any) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)).map((skill: any) => 
+ <Box key={skill.id} sx={{ display: 'flex', gap: 2,  }} justifyContent="space-between" alignItems='center'>
+  <Typography sx={{width: 500}} level='body-sm'>{skill.name}</Typography>
+  <Rating
+    size='small'
+    name="simple-controlled"
+    onChange={(_, value) => {
+      setUsers([...users.map((mbr: any) => {
+        if(mbr.id == member.id) {
+          updateUser(member.id, [...mbr.skills.filter((skll: any) => skll.id != skill.id), {...skill, proficiency: value}])
+          return {...mbr, skills: [...mbr.skills.filter((skll: any) => skll.id != skill.id), {...skill, proficiency: value}]}
+        }
+        return mbr
+      })])
+    }}
+    value={skill.proficiency}
+    />
+  <IconButton aria-label="delete" color='danger' variant='plain' size='sm' onClick={() => {
+    setUsers([...users.map((mbr: any) => {
+      if(mbr.id == member.id) {
+        updateUser(member.id, [...mbr.skills.filter((skll: any) => skll.id != skill.id)])
+        return {...mbr, skills: [...mbr.skills.filter((skll: any) => skll.id != skill.id)]}
+      }
+      return mbr
+    })])
+  }}>
+    <DeleteIcon />
+  </IconButton>
+  </Box>)}
+  </Card>)}
+</Box>
+</Sheet>}</>
       
-      <Box sx={{ display: 'flex', gap: 1, p:1, flexDirection: 'column' }}>
-        {elementsSelected.sort((a: any,b: any) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)).map((member: any) => <Card key={member.id}  sx={{p:1}}><Box sx={{ display: 'flex', gap: 2,  }} justifyContent="space-between" alignItems='center'>
-          <Typography level='title-sm'>{member.name}</Typography>
-          <Autocomplete
-            placeholder="Ajouter une compétence"
-            size='sm'
-            value={[]}
-            multiple
-            getOptionLabel={(option: any) => option?.name}
-            isOptionEqualToValue={(option: any, value: any) => option.id == value.id}
-            onChange={(_, selected: any) => {
-              const element = selected &&  selected[0]
-              selected && setElementsSelected([...elementsSelected.filter((mmbr: any) => mmbr.id != element.id).map((mbr: any) => {
-              if(mbr.skills && mbr.id == member.id) {
-                updateGroupMember(member.id, [...mbr.skills, {...element, proficiency: 0}])
-                return {...mbr, skills: [...mbr.skills, element]}
-              }
-              return mbr
-            })])}}
-            options={skills.filter((skill: any) => member.skills && !member.skills.find((skll: any) => skll.id == skill.id))}
-            sx={{ width: 300 }}
-          />
-       </Box>
-       <Divider/>
-       {member.skills && member.skills.sort((a: any,b: any) => (a.name > b.name) ? 1 : ((b.name > a.name) ? -1 : 0)).map((skill: any) => 
-       <Box key={skill.id} sx={{ display: 'flex', gap: 2,  }} justifyContent="space-between" alignItems='center'>
-        <Typography sx={{width: 500}} level='body-sm'>{skill.name}</Typography>
-        <Rating
-          size='small'
-          name="simple-controlled"
-          onChange={(_, value) => {
-            setElementsSelected([...elementsSelected.map((mbr: any) => {
-              if(mbr.id == member.id) {
-                updateGroupMember(member.id, [...mbr.skills.filter((skll: any) => skll.id != skill.id), {...skill, proficiency: value}])
-                return {...mbr, skills: [...mbr.skills.filter((skll: any) => skll.id != skill.id), {...skill, proficiency: value}]}
-              }
-              return mbr
-            })])
-          }}
-          value={skill.proficiency}
-          />
-        <IconButton aria-label="delete" color='danger' variant='plain' size='sm' onClick={() => {
-          setElementsSelected([...elementsSelected.map((mbr: any) => {
-            if(mbr.id == member.id) {
-              updateGroupMember(member.id, [...mbr.skills.filter((skll: any) => skll.id != skill.id)])
-              return {...mbr, skills: [...mbr.skills.filter((skll: any) => skll.id != skill.id)]}
-            }
-            return mbr
-          })])
-        }}>
-          <DeleteIcon />
-        </IconButton>
-        </Box>)}
-        </Card>)}
-      </Box>
-      </Sheet>
   );
 }
 

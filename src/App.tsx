@@ -1,11 +1,13 @@
 
 import { useEffect, useState } from 'react';
-import { authenticate } from './utils/genesysCloudUtils';
+import { authenticate, getUserMe } from './utils/genesysCloudUtils';
 import CustomSkills from './components/custom-skills/CustomSkills';
+import { Models } from 'purecloud-platform-client-v2';
 
 
 function App() {
   const [initialized, setInitialized] = useState<boolean>(false);
+  const [authenticatedUser, setAuthenticadUser] = useState<Models.User>({version: 1})
 
   useEffect(() => {
     getPlatformClientData();
@@ -14,6 +16,10 @@ function App() {
   async function getPlatformClientData() {
     await authenticate()
       .then(() => {
+        return getUserMe();
+      })
+      .then((userDetailsResponse: any) => {
+        setAuthenticadUser(userDetailsResponse)
         setInitialized(true)
       })
       .catch((err: any) => {
@@ -24,7 +30,7 @@ function App() {
   return (
     <>{
       initialized && 
-      <CustomSkills />
+      <CustomSkills authenticatedUser={authenticatedUser}/>
       }
     </>
   );
