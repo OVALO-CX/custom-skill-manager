@@ -2,7 +2,7 @@ import React from 'react';
 import { Autocomplete, Box, Card, Divider, IconButton, Sheet, Typography } from '@mui/joy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Rating } from '@mui/material';
-import { getAllLocations, getAllQueues, getAllSkills, getAllUsers, getQueueMembers, getUserSkills, updateUserRoutingSkills } from '../../utils/genesysCloudUtils';
+import { getAllLocations, getAllQueues, getAllSkills, getAllUsers, getQueueMembers, updateUserRoutingSkills } from '../../utils/genesysCloudUtils';
 import { Models } from 'purecloud-platform-client-v2';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
