@@ -17,6 +17,7 @@
     "@mui/material": "^6.1.0",
     "bootstrap": "^5.3.3",
     "debounce": "^2.0.0",
+    "echarts-for-react": "^3.0.2",
     "purecloud-platform-client-v2": "^188.0.1",
     "react": "^18.2.0",
     "react-app-with-genesys-cloud-sdk": "file:",

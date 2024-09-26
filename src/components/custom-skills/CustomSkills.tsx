@@ -25,18 +25,18 @@ function CustomSkills({authenticatedUser} : {authenticatedUser: Models.User}) {
 
   const loadElements = () => {
     setLoading(true)
-    getAllQueues().then(qs => setQueues(qs))
-      getAllSkills().then(sklls => setSkills(sklls))
-      getAllUsers().then(usrs => {
-        if(authenticatedUser.locations && authenticatedUser.locations?.length > 0) {
-          const authUserLocationId =  authenticatedUser.locations[0].locationDefinition?.id
-          const authUserCountry = locations.find(lct => lct.id == authUserLocationId)?.address?.country
-          setUsers([...usrs.filter(usr => locations.find(loc => usr.locations && usr.locations.length > 0 
-            &&  loc.id == usr.locations[0].locationDefinition?.id)?.address?.country == authUserCountry)])
-        }
-        setFiltered(true)
-        setLoading(false)
-      })
+    if(authenticatedUser.locations && authenticatedUser.locations?.length > 0) {
+      const authUserLocationId =  authenticatedUser.locations[0].locationDefinition?.id
+      const authUserCountry = locations.find(lct => lct.id == authUserLocationId)?.address?.country
+      getAllQueues().then(qs => setQueues(qs))
+        getAllSkills().then(sklls => setSkills(sklls.filter(skill => skill.name.startsWith(authUserCountry + "_"))))
+        getAllUsers().then(usrs => {
+            setUsers([...usrs.filter(usr => locations.find(loc => usr.locations && usr.locations.length > 0 
+              &&  loc.id == usr.locations[0].locationDefinition?.id)?.address?.country == authUserCountry)])
+          setFiltered(true)
+          setLoading(false)
+        })
+    }
   }
 
   React.useEffect(() => {
@@ -130,7 +130,7 @@ sx={{ width: 300, height: 20 }}
         selected && setUsers([...users.map((mbr: any) => {
         if(mbr.skills && mbr.id == member.id) {
           updateUser(member.id, [...mbr.skills, {...element, proficiency: 0}])
-          return {...mbr, skills: [...mbr.skills, element]}
+          return {...mbr, skills: [...mbr.skills, {...element, proficiency: 0}]}
         }
         return mbr
       })])}}

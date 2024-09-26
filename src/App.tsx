@@ -4,7 +4,6 @@ import { authenticate, getUserMe } from './utils/genesysCloudUtils';
 import CustomSkills from './components/custom-skills/CustomSkills';
 import { Models } from 'purecloud-platform-client-v2';
 
-
 function App() {
   const [initialized, setInitialized] = useState<boolean>(false);
   const [authenticatedUser, setAuthenticadUser] = useState<Models.User>({version: 1})
@@ -27,10 +26,15 @@ function App() {
       });
   }
 
+  
+
+ 
+
   return (
     <>{
       initialized && 
       <CustomSkills authenticatedUser={authenticatedUser}/>
+
       }
     </>
   );
