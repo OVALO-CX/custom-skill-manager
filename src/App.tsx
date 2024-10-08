@@ -28,13 +28,11 @@ function App() {
 
   
 
- 
 
   return (
     <>{
       initialized && 
       <CustomSkills authenticatedUser={authenticatedUser}/>
-
       }
     </>
   );

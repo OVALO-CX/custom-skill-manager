@@ -29,7 +29,7 @@ function CustomSkills({authenticatedUser} : {authenticatedUser: Models.User}) {
       const authUserLocationId =  authenticatedUser.locations[0].locationDefinition?.id
       const authUserCountry = locations.find(lct => lct.id == authUserLocationId)?.address?.country
       getAllQueues().then(qs => setQueues(qs))
-        getAllSkills().then(sklls => setSkills(sklls.filter(skill => skill.name.startsWith(authUserCountry + "_"))))
+        getAllSkills().then(sklls => setSkills([...sklls.filter(skill => skill.name.startsWith(authUserCountry + "_"))]))
         getAllUsers().then(usrs => {
             setUsers([...usrs.filter(usr => locations.find(loc => usr.locations && usr.locations.length > 0 
               &&  loc.id == usr.locations[0].locationDefinition?.id)?.address?.country == authUserCountry)])
