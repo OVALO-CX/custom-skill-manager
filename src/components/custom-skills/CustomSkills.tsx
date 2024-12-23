@@ -2,7 +2,7 @@ import React from 'react';
 import { Autocomplete, Box, Card, Divider, IconButton, Sheet, Typography } from '@mui/joy';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { Rating } from '@mui/material';
-import { getAllLocations, getAllQueues, getAllSkills, getAllUsers, getQueueMembers, updateUserRoutingSkills } from '../../utils/genesysCloudUtils';
+import { getAllLocations, getAllQueues, getAllSkills, getAllUsers, getQueueMembers, updateUserRoutingSkill, addUserRoutingSkill, deleteUserRoutingSkill } from '../../utils/genesysCloudUtils';
 import { Models } from 'purecloud-platform-client-v2';
 import RefreshIcon from '@mui/icons-material/Refresh';
 
@@ -17,31 +17,38 @@ function CustomSkills({authenticatedUser} : {authenticatedUser: Models.User}) {
   const [queueUsers, setQueueUsers] = React.useState<string[]>([])
   const [elementsSelected, setElementsSelected] = React.useState<string[]>([])
   const [loading, setLoading] = React.useState<boolean>(false)
+  const [errorLocation, setErrorLocation] = React.useState<boolean>(false)
 
   React.useEffect(() => {
     getAllLocations().then(lctns => setLocations(lctns))
   }, [])
-
 
   const loadElements = () => {
     setLoading(true)
     if(authenticatedUser.locations && authenticatedUser.locations?.length > 0) {
       const authUserLocationId =  authenticatedUser.locations[0].locationDefinition?.id
       const authUserCountry = locations.find(lct => lct.id == authUserLocationId)?.address?.country
-      getAllQueues().then(qs => setQueues(qs))
+      getAllQueues().then(qs => setQueues([...qs.filter(queue => queue.name.startsWith(authUserCountry + "_"))]))
       getAllSkills().then(sklls => setSkills([...sklls.filter(skill => skill.name.startsWith(authUserCountry + "_"))]))
       getAllUsers().then(usrs => {
-          setUsers([...usrs])
+        setUsers([...usrs.filter(usr => usr.division.id === authenticatedUser.division?.id).map(usr => {
+          return {...usr, skills : [...usr.skills.filter((skill: Models.RoutingSkill) => skill.name.startsWith(authUserCountry + "_"))]}
+        })])
+        setErrorLocation(false)
         setFiltered(true)
         setLoading(false)
       })
-    }
+    } 
   }
 
   React.useEffect(() => {
-    if(locations && locations.length > 0 && authenticatedUser.locations && authenticatedUser.locations?.length > 0) {
-      loadElements()
+    if(!authenticatedUser.locations || authenticatedUser.locations?.length == 0) {
+      setErrorLocation(true)
+      return
     }
+    if(locations && locations.length > 0) {
+      loadElements()
+    } 
   }, [locations])
 
   const getUsers = (usrs : Models.User[]) => {
@@ -80,11 +87,12 @@ function CustomSkills({authenticatedUser} : {authenticatedUser: Models.User}) {
     })
   }
 
-  const updateUser = (userId : string, skills: any) => {
-    updateUserRoutingSkills(userId, skills)
+  return (<>{
+    errorLocation && <Sheet sx={{p:2}}>
+      <Typography>Error, you have no localisation configured</Typography>
+    </Sheet>
   }
-
-  return (<>{filtered && <Sheet sx={{
+  {filtered && <Sheet sx={{
     backgroundColor: 'white'
   }}><Sheet  sx={{
     p: 2,
@@ -128,7 +136,7 @@ sx={{ width: 300, height: 20 }}
         const element = selected &&  selected[0]
         selected && setUsers([...users.map((mbr: any) => {
         if(mbr.skills && mbr.id == member.id) {
-          updateUser(member.id, [...mbr.skills, {...element, proficiency: 0}])
+          addUserRoutingSkill(member.id, element.id, 0)
           return {...mbr, skills: [...mbr.skills, {...element, proficiency: 0}]}
         }
         return mbr
@@ -147,7 +155,7 @@ sx={{ width: 300, height: 20 }}
     onChange={(_, value) => {
       setUsers([...users.map((mbr: any) => {
         if(mbr.id == member.id) {
-          updateUser(member.id, [...mbr.skills.filter((skll: any) => skll.id != skill.id), {...skill, proficiency: value}])
+          updateUserRoutingSkill(member.id, skill.id, value || 0)
           return {...mbr, skills: [...mbr.skills.filter((skll: any) => skll.id != skill.id), {...skill, proficiency: value}]}
         }
         return mbr
@@ -158,7 +166,7 @@ sx={{ width: 300, height: 20 }}
   <IconButton aria-label="delete" color='danger' variant='plain' size='sm' onClick={() => {
     setUsers([...users.map((mbr: any) => {
       if(mbr.id == member.id) {
-        updateUser(member.id, [...mbr.skills.filter((skll: any) => skll.id != skill.id)])
+        deleteUserRoutingSkill(member.id, skill.id)
         return {...mbr, skills: [...mbr.skills.filter((skll: any) => skll.id != skill.id)]}
       }
       return mbr

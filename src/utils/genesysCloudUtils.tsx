@@ -76,6 +76,18 @@ export async function updateUserRoutingSkills(userId: string, skills: Models.Use
     return usersApi.putUserRoutingskillsBulk(userId, skills);
 }
 
+export async function addUserRoutingSkill(userId: string, skillId: string, proficiency: number) {
+    return usersApi.postUserRoutingskills(userId, {id: skillId, proficiency});
+}
+
+export async function updateUserRoutingSkill(userId: string, skillId: string, proficiency: number) {
+    return usersApi.putUserRoutingskill(userId, skillId, {proficiency});
+}
+
+export async function deleteUserRoutingSkill(userId: string, skillId: string) {
+    return usersApi.deleteUserRoutingskill(userId, skillId);
+}
+
 export async function getAllQueues() {
     return await getAllPages((e: any) =>  routingApi.getRoutingQueues(e))
 }
