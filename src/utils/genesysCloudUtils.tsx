@@ -105,16 +105,6 @@ export function getUserRoutingStatus(userId: string) {
     return usersApi.getUserRoutingstatus(userId);
 }
 
-export async function logoutUsersFromQueue(queueId: string) {
-    routingApi.getRoutingQueueMembers(queueId)
-        .then((data: any) => {
-            return Promise.all(data.entities.map((user: any) => logoutUser(user.id)));
-        })
-        .catch((err: any) => {
-            console.error(err);
-        })
-}
-
 export async function getUserMe() {
     return usersApi.getUsersMe({ 
         expand: ['routingStatus', 'presence', 'locations'],
