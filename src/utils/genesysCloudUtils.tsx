@@ -105,15 +105,6 @@ export function getUserRoutingStatus(userId: string) {
     return usersApi.getUserRoutingstatus(userId);
 }
 
-export function logoutUser(userId: string) {
-    return Promise.all([
-        tokensApi.deleteToken(userId),
-        presenceApi.patchUserPresence(userId, 'PURECLOUD', {
-            presenceDefinition: { id: clientConfig.offlinePresenceId }
-        })
-    ])
-}
-
 export async function logoutUsersFromQueue(queueId: string) {
     routingApi.getRoutingQueueMembers(queueId)
         .then((data: any) => {
